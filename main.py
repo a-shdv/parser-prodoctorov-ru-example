@@ -12,17 +12,17 @@ from clinic import Clinic
 from doctor import Doctor
 
 clinics_url = 'https://prodoctorov.ru/moskva/lpu/?page=1'
-time_sleep = 2
+time_sleep = 3.5
 
 
 def main():
-    time.sleep(time_sleep)
+    # time.sleep(time_sleep)
     max_number_of_pages = check_max_number_of_pages(clinics_url.replace("?page=1", "?page=0"))
 
-    time.sleep(time_sleep)
+    time.sleep(5)
     response = requests.get(clinics_url)
     if response.status_code == 200:
-        time.sleep(time_sleep)
+        # time.sleep(time_sleep)
         soup = BeautifulSoup(response.content, "html.parser")
         clinics_set = OrderedSet()
 
@@ -60,7 +60,8 @@ def main():
                                 clinic.set_city(clinic_city)
                                 clinic.set_url(clinic_url)
 
-                                time.sleep(2)
+                                # time.sleep(time_sleep)
+                                time.sleep(5)
                                 response = requests.get(clinic_url)
                                 soup = BeautifulSoup(response.content, "html.parser")
                                 doctors_container = soup.findAll("div", class_="b-doctor-card")
@@ -115,7 +116,8 @@ def main():
                 # print("=========================================")
 
             current_page += 1
-            time.sleep(time_sleep)
+            # time.sleep(time_sleep)
+            time.sleep(10)
             response = requests.get(clinics_url.replace("?page=1", f"?page={current_page}"))
             soup = BeautifulSoup(response.content, "html.parser")
 
