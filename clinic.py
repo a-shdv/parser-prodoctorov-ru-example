@@ -1,11 +1,14 @@
+from ordered_set import OrderedSet
+
+
 class Clinic:
     name: str
     url: str
-    doctors: list
+    doctors: OrderedSet
 
     def __init__(self, name: str = "", url: str = "", doctors=None):
         if doctors is None:
-            doctors = []
+            doctors = OrderedSet()
         self._name = name
         self._url = url
         self._doctors = doctors
@@ -25,8 +28,8 @@ class Clinic:
         self._url = _url
 
     @property
-    def get_doctors(self) -> list:
-        return self.doctors
+    def get_doctors(self) -> OrderedSet:
+        return self._doctors
 
     def __str__(self):
         return self._name.strip()

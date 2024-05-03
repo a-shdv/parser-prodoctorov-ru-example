@@ -22,6 +22,15 @@ class Doctor:
     def set_url(self, url):
         self._url = url
 
+    def get_name(self):
+        return self._name
+
+    def get_profession(self):
+        return self._profession
+
+    def get_experience(self):
+        return self._experience
+
     def get_url(self):
         return self._url
 

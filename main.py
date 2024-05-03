@@ -1,4 +1,6 @@
 import requests
+import openpyxl
+
 from bs4 import BeautifulSoup
 from ordered_set import OrderedSet
 
@@ -18,13 +20,12 @@ def main():
         clinics_set = OrderedSet()
 
         current_page: int = 1
-        while current_page <= max_number_of_pages:
+        while current_page <= 1:
 
             clinics_container = soup.find("div", class_="appointments_page b-container")
             clinics_cards = clinics_container.find_all("div", class_="b-card")
 
             for clinic_card in clinics_cards:
-                # город фио специализация название клиники
                 clinic = Clinic()
                 clinic_name: str = clinic_card.find("a",
                                                     class_="b-link b-link_underline_hover b-link_color_primary-blue d-inline").find(
@@ -35,13 +36,11 @@ def main():
                                    .get("href")) + "vrachi/#tab-content"
                 clinic.set_name(clinic_name)
                 clinic.set_url(clinic_url)
-                clinics_set.add(clinic)
 
                 response = requests.get(clinic_url)
                 soup = BeautifulSoup(response.content, "html.parser")
                 doctors_container = soup.findAll("div", class_="b-doctor-card")
 
-                doctors_set = OrderedSet()
                 for doctor in doctors_container:
                     doc_to_add = Doctor()
 
@@ -71,18 +70,23 @@ def main():
                         doc_url = "-"
 
                     init_doctor(doc_to_add, doc_name, doc_prof, doc_exp, doc_url)
-                    doctors_set.add(doc_to_add)
+                    clinic.get_doctors.add(doc_to_add)
 
+                clinics_set.add(clinic)
                 print("=========================================")
-                print(clinic_url)
-                print(len(doctors_set))
-                for i, e in enumerate(doctors_set):
-                    print(e)
+                # print(clinic_url)
+                # print(len(doctors_set))
+                for i, e in enumerate(clinics_set):
+                    print(e.get_doctors)
+                    for val in e.get_doctors:
+                        print(val)
                 print("=========================================")
 
             current_page += 1
             response = requests.get(clinics_url.replace("?page=1", f"?page={current_page}"))
             soup = BeautifulSoup(response.content, "html.parser")
+
+        write_to_excel_file(clinics_set)
 
         # print(len(clinics_set))
         # for i, e in enumerate(clinics_set):
@@ -93,7 +97,8 @@ def check_max_number_of_pages(url) -> int:
     response = requests.get(url)
     soup = BeautifulSoup(response.content, "html.parser")
     soup.find("span", "b-pagination-vuetify-imitation__item b-pagination-vuetify-imitation__item_current")
-    return int(soup.find("span", "b-pagination-vuetify-imitation__item b-pagination-vuetify-imitation__item_current").get_text().strip())
+    return int(soup.find("span",
+                         "b-pagination-vuetify-imitation__item b-pagination-vuetify-imitation__item_current").get_text().strip())
 
 
 def init_doctor(doctor: Doctor, name: str, profession: str, experience: str, url: str) -> Doctor:
@@ -102,6 +107,48 @@ def init_doctor(doctor: Doctor, name: str, profession: str, experience: str, url
     doctor.set_experience(experience)
     doctor.set_url(url)
     return doctor
+
+
+def write_to_excel_file(clinics_set: OrderedSet):
+    # Create a new Excel workbook
+    workbook = openpyxl.Workbook()
+
+    # Select the active worksheet
+    sheet = workbook.active
+
+    # Write data to the Excel file
+    sheet['A1'] = 'Город'
+    sheet['B1'] = 'Клиника'
+    sheet['C1'] = 'Врач'
+    sheet['D1'] = 'Специализация'
+    sheet['E1'] = 'Стаж'
+    sheet['F1'] = 'Ссылка на клинику'
+    sheet['G1'] = 'Ссылка на врача'
+
+    row = 1
+    j = 1
+    while row < len(clinics_set):
+
+        for clinic in clinics_set:
+            for doc in clinic.get_doctors:
+                sheet['A' + str(row)] = "-"  # Город
+                sheet['B' + str(row)] = clinics_set.__getitem__(j).get_name.strip()  # Клиника
+                sheet['C' + str(row)] = doc.get_name()  # Врач
+                sheet['D' + str(row)] = doc.get_profession()  # Специализация
+                sheet['E' + str(row)] = doc.get_experience()  # Стаж
+                row += 1
+        # for doc in clinics_set.__getitem__(row).get_doctors:
+        #     # clinics_set.__getitem__(1).get_doctors
+        #     sheet['A' + str(row)] = "-"  # Город
+        #     sheet['B' + str(row)] = clinics_set.__getitem__(j).get_name.strip()  # Клиника
+        #     sheet['C' + str(row)] = doc.get_name()  # Врач
+        #     sheet['D' + str(row)] = doc.get_profession()  # Специализация
+        #     sheet['E' + str(row)] = doc.get_experience()  # Стаж
+        #     # sheet['F' + str(rowNo)] = clinics_set.__getitem__(rowNo).get_url.strip()  # Ссылка на клинику
+        #     # sheet['G' + str(rowNo)] = doc.get_url  # Ссылка на врача
+
+    # Save the workbook
+    workbook.save('/Users/a-shdv/Desktop/example.xlsx')
 
 
 if __name__ == '__main__':
