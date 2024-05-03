@@ -1,4 +1,5 @@
 import time
+from datetime import date, datetime
 
 import requests
 import openpyxl
@@ -11,14 +12,17 @@ from clinic import Clinic
 from doctor import Doctor
 
 clinics_url = 'https://prodoctorov.ru/moskva/lpu/?page=1'
-max_clinics_per_page = 20
+time_sleep = 2
 
 
 def main():
+    time.sleep(time_sleep)
     max_number_of_pages = check_max_number_of_pages(clinics_url.replace("?page=1", "?page=0"))
 
+    time.sleep(time_sleep)
     response = requests.get(clinics_url)
     if response.status_code == 200:
+        time.sleep(time_sleep)
         soup = BeautifulSoup(response.content, "html.parser")
         clinics_set = OrderedSet()
 
@@ -32,13 +36,15 @@ def main():
 
                     for clinic_card in clinics_cards:
                         clinic = Clinic()
-                        if clinic_card.find("a", class_="b-link b-link_underline_hover b-link_color_primary-blue d-inline").find(
-                            "span") is not None:
+                        if clinic_card.find("a",
+                                            class_="b-link b-link_underline_hover b-link_color_primary-blue d-inline").find(
+                                "span") is not None:
                             clinic_name: str = clinic_card.find("a",
                                                                 class_="b-link b-link_underline_hover b-link_color_primary-blue d-inline").find(
                                 "span").get_text()
 
-                            if clinic_card.find("a", class_="b-link b-link_underline_hover b-link_color_primary-blue d-inline") is not None:
+                            if clinic_card.find("a",
+                                                class_="b-link b-link_underline_hover b-link_color_primary-blue d-inline") is not None:
 
                                 clinic_url: str = ("https://prodoctorov.ru"
                                                    + clinic_card.find("a",
@@ -46,13 +52,15 @@ def main():
                                                    .get("href")) + "vrachi/#tab-content"
 
                                 if soup.find("div", "b-text-unit b-text-unit_vertical_middle") is not None:
-                                    clinic_city = soup.find("div", "b-text-unit b-text-unit_vertical_middle").get_text().strip()
+                                    clinic_city = soup.find("div",
+                                                            "b-text-unit b-text-unit_vertical_middle").get_text().strip()
                                 else:
                                     clinic_city = "-"
                                 clinic.set_name(clinic_name)
                                 clinic.set_city(clinic_city)
                                 clinic.set_url(clinic_url)
 
+                                time.sleep(2)
                                 response = requests.get(clinic_url)
                                 soup = BeautifulSoup(response.content, "html.parser")
                                 doctors_container = soup.findAll("div", class_="b-doctor-card")
@@ -76,12 +84,15 @@ def main():
                                         doc_prof = "-"
 
                                     if doctor.find("div", class_="b-doctor-card__experience-years") is not None:
-                                        doc_exp = doctor.find("div", class_="b-doctor-card__experience-years").get_text()
+                                        doc_exp = doctor.find("div",
+                                                              class_="b-doctor-card__experience-years").get_text()
                                     else:
                                         doc_exp = "-"
 
                                     if doctor.find("a", class_="b-doctor-card__name-link") is not None:
-                                        doc_url = "https://prodoctorov.ru" + doctor.find("a", class_="b-doctor-card__name-link").get("href")
+                                        doc_url = "https://prodoctorov.ru" + doctor.find("a",
+                                                                                         class_="b-doctor-card__name-link").get(
+                                            "href")
                                     else:
                                         doc_url = "-"
 
@@ -89,8 +100,12 @@ def main():
                                     clinic.get_doctors.add(doc_to_add)
 
                                 clinics_set.add(clinic)
-                                print(current_page)
-                # print("=========================================")
+
+                                current_time = datetime.now()
+                                formatted_time = current_time.strftime("%H:%M:%S")
+
+                                print(
+                                current_time.strftime("%d/%m/%Y") + " " + formatted_time + " " + str(current_page))                # print("=========================================")
                 # # print(clinic_url)
                 # # print(len(doctors_set))
                 # for i, e in enumerate(clinics_set):
@@ -100,6 +115,7 @@ def main():
                 # print("=========================================")
 
             current_page += 1
+            time.sleep(time_sleep)
             response = requests.get(clinics_url.replace("?page=1", f"?page={current_page}"))
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -167,7 +183,7 @@ def write_to_excel_file(clinics_set: OrderedSet):
 
                 row += 1
         # for doc in clinics_set.__getitem__(row).get_doctors:
-        #     # clinics_set.__getitem__(1).get_doctors
+        #     # clinics_set.__getitem__(time_sleep)).get_doctors
         #     sheet['A' + str(row)] = "-"  # Город
         #     sheet['B' + str(row)] = clinics_set.__getitem__(j).get_name.strip()  # Клиника
         #     sheet['C' + str(row)] = doc.get_name()  # Врач
