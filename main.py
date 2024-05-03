@@ -10,14 +10,15 @@ max_clinics_per_page = 20
 
 
 def main():
+    max_number_of_pages = check_max_number_of_pages(clinics_url.replace("?page=1", "?page=0"))
+
     response = requests.get(clinics_url)
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, "html.parser")
-
         clinics_set = OrderedSet()
 
         current_page: int = 1
-        while current_page <= 5:
+        while current_page <= max_number_of_pages:
 
             clinics_container = soup.find("div", class_="appointments_page b-container")
             clinics_cards = clinics_container.find_all("div", class_="b-card")
@@ -42,10 +43,6 @@ def main():
 
                 doctors_set = OrderedSet()
                 for doctor in doctors_container:
-                    # name: doctor.find("span", class_="b-doctor-card__name-surname").get_text()
-                    # profession: doctor.find("div", class_="b-doctor-card__spec").get_text()
-                    # exp: doctor.find("div", class_="b-doctor-card__experience-years").get_text()
-                    # link: doctor.find("a", class_="b-doctor-card__name-link").get("href")
                     doc_to_add = Doctor()
 
                     doc_name: str
@@ -90,6 +87,13 @@ def main():
         # print(len(clinics_set))
         # for i, e in enumerate(clinics_set):
         #     print(i, e)
+
+
+def check_max_number_of_pages(url) -> int:
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, "html.parser")
+    soup.find("span", "b-pagination-vuetify-imitation__item b-pagination-vuetify-imitation__item_current")
+    return int(soup.find("span", "b-pagination-vuetify-imitation__item b-pagination-vuetify-imitation__item_current").get_text().strip())
 
 
 def init_doctor(doctor: Doctor, name: str, profession: str, experience: str, url: str) -> Doctor:
