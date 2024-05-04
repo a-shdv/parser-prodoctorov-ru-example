@@ -1,6 +1,5 @@
 import time
-from datetime import date, datetime
-
+import random
 import requests
 import openpyxl
 
@@ -11,127 +10,92 @@ from ordered_set import OrderedSet
 from clinic import Clinic
 from doctor import Doctor
 
+# Define a list of user-agent strings
+user_agents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:98.0) Gecko/20100101 Firefox/98.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.3 Safari/605.1.15",
+    "Mozilla/5.0 (Linux; Android 10; SM-G960U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Mobile Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 15_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
+]
+
+# Initialize a session
+session = requests.Session()
+
 clinics_url = 'https://prodoctorov.ru/moskva/lpu/?page=1'
-time_sleep = 3.5
 
 
 def main():
-    # time.sleep(time_sleep)
     max_number_of_pages = check_max_number_of_pages(clinics_url.replace("?page=1", "?page=0"))
 
-    time.sleep(5)
-    response = requests.get(clinics_url)
-    if response.status_code == 200:
-        # time.sleep(time_sleep)
-        soup = BeautifulSoup(response.content, "html.parser")
-        clinics_set = OrderedSet()
-
-        current_page: int = 1
-        while current_page <= max_number_of_pages:
-            if soup.find("div", class_="appointments_page b-container") is not None:
-                clinics_container = soup.find("div", class_="appointments_page b-container")
-
-                if clinics_container.find_all("div", class_="b-card") is not None:
-                    clinics_cards = clinics_container.find_all("div", class_="b-card")
-
-                    for clinic_card in clinics_cards:
-                        clinic = Clinic()
-                        if clinic_card.find("a",
-                                            class_="b-link b-link_underline_hover b-link_color_primary-blue d-inline").find(
-                                "span") is not None:
-                            clinic_name: str = clinic_card.find("a",
-                                                                class_="b-link b-link_underline_hover b-link_color_primary-blue d-inline").find(
-                                "span").get_text()
-
-                            if clinic_card.find("a",
-                                                class_="b-link b-link_underline_hover b-link_color_primary-blue d-inline") is not None:
-
-                                clinic_url: str = ("https://prodoctorov.ru"
-                                                   + clinic_card.find("a",
-                                                                      class_="b-link b-link_underline_hover b-link_color_primary-blue d-inline")
-                                                   .get("href")) + "vrachi/#tab-content"
-
-                                if soup.find("div", "b-text-unit b-text-unit_vertical_middle") is not None:
-                                    clinic_city = soup.find("div",
-                                                            "b-text-unit b-text-unit_vertical_middle").get_text().strip()
-                                else:
-                                    clinic_city = "-"
-                                clinic.set_name(clinic_name)
-                                clinic.set_city(clinic_city)
-                                clinic.set_url(clinic_url)
-
-                                # time.sleep(time_sleep)
-                                time.sleep(5)
-                                response = requests.get(clinic_url)
-                                soup = BeautifulSoup(response.content, "html.parser")
-                                doctors_container = soup.findAll("div", class_="b-doctor-card")
-
-                                for doctor in doctors_container:
-                                    doc_to_add = Doctor()
-
-                                    doc_name: str
-                                    doc_prof: str
-                                    doc_exp: str
-                                    doc_url: str
-
-                                    if doctor.find("span", class_="b-doctor-card__name-surname") is not None:
-                                        doc_name = doctor.find("span", class_="b-doctor-card__name-surname").get_text()
-                                    else:
-                                        doc_name = "-"
-
-                                    if doctor.find("div", class_="b-doctor-card__spec") is not None:
-                                        doc_prof = doctor.find("div", class_="b-doctor-card__spec").get_text()
-                                    else:
-                                        doc_prof = "-"
-
-                                    if doctor.find("div", class_="b-doctor-card__experience-years") is not None:
-                                        doc_exp = doctor.find("div",
-                                                              class_="b-doctor-card__experience-years").get_text()
-                                    else:
-                                        doc_exp = "-"
-
-                                    if doctor.find("a", class_="b-doctor-card__name-link") is not None:
-                                        doc_url = "https://prodoctorov.ru" + doctor.find("a",
-                                                                                         class_="b-doctor-card__name-link").get(
-                                            "href")
-                                    else:
-                                        doc_url = "-"
-
-                                    init_doctor(doc_to_add, doc_name, doc_prof, doc_exp, doc_url)
-                                    clinic.get_doctors.add(doc_to_add)
-
-                                clinics_set.add(clinic)
-
-                                current_time = datetime.now()
-                                formatted_time = current_time.strftime("%H:%M:%S")
-
-                                print(
-                                current_time.strftime("%d/%m/%Y") + " " + formatted_time + " " + str(current_page))                # print("=========================================")
-                # # print(clinic_url)
-                # # print(len(doctors_set))
-                # for i, e in enumerate(clinics_set):
-                #     print(e.get_doctors)
-                #     for val in e.get_doctors:
-                #         print(val)
-                # print("=========================================")
-
-            current_page += 1
-            # time.sleep(time_sleep)
-            time.sleep(10)
-            response = requests.get(clinics_url.replace("?page=1", f"?page={current_page}"))
+    current_page: int = 1
+    while current_page <= max_number_of_pages:
+        response = get_page(clinics_url)
+        if response.status_code == 200:
             soup = BeautifulSoup(response.content, "html.parser")
+            clinics_set = OrderedSet()
+            clinics_container = soup.find("div", class_="appointments_page b-container")
+            if clinics_container:
+                clinics_cards = clinics_container.find_all("div", class_="b-card")
+                for clinic_card in clinics_cards:
+                    clinic = Clinic()
+                    clinic_name_span = clinic_card.find("a",
+                                                        class_="b-link b-link_underline_hover b-link_color_primary-blue d-inline")
+                    if clinic_name_span:
+                        clinic_name = clinic_name_span.find("span").get_text()
+                        clinic_url = "https://prodoctorov.ru" + clinic_name_span.get("href") + "vrachi/#tab-content"
+                        clinic_city = soup.find("div",
+                                                "b-text-unit b-text-unit_vertical_middle").get_text().strip() if soup.find(
+                            "div", "b-text-unit b-text-unit_vertical_middle") else "-"
+                        clinic.set_name(clinic_name)
+                        clinic.set_city(clinic_city)
+                        clinic.set_url(clinic_url)
 
-        write_to_excel_file(clinics_set)
+                        response = get_page(clinic_url)
+                        soup = BeautifulSoup(response.content, "html.parser")
+                        doctors_container = soup.findAll("div", class_="b-doctor-card")
 
-        # print(len(clinics_set))
-        # for i, e in enumerate(clinics_set):
-        #     print(i, e)
+                        for doctor in doctors_container:
+                            doc_to_add = Doctor()
+                            doc_name = doctor.find("span",
+                                                   class_="b-doctor-card__name-surname").get_text() if doctor.find(
+                                "span", class_="b-doctor-card__name-surname") else "-"
+                            doc_prof = doctor.find("div", class_="b-doctor-card__spec").get_text() if doctor.find("div",
+                                                                                                                  class_="b-doctor-card__spec") else "-"
+                            doc_exp = doctor.find("div",
+                                                  class_="b-doctor-card__experience-years").get_text() if doctor.find(
+                                "div", class_="b-doctor-card__experience-years") else "-"
+                            doc_url = "https://prodoctorov.ru" + doctor.find("a",
+                                                                             class_="b-doctor-card__name-link").get(
+                                "href") if doctor.find("a", class_="b-doctor-card__name-link") else "-"
+                            init_doctor(doc_to_add, doc_name, doc_prof, doc_exp, doc_url)
+                            clinic.get_doctors.add(doc_to_add)
+
+                        clinics_set.add(clinic)
+
+                        current_time = time.strftime("%d/%m/%Y %H:%M:%S")
+                        formatted_curr_page = str(current_page)
+
+                        print(current_time + " " + formatted_curr_page)
+                        time.sleep(random.uniform(2, 5))  # Sleep for random duration between 2 and 5 seconds
+
+        current_page += 1
+
+
+def get_page(url):
+    # Randomly select a user-agent string
+    headers = {'User-Agent': random.choice(user_agents)}
+
+    # Make the request with the selected user-agent string
+    response = session.get(url, headers=headers)
+
+    return response
 
 
 def check_max_number_of_pages(url) -> int:
-    response = requests.get(url)
+    response = get_page(url)
     soup = BeautifulSoup(response.content, "html.parser")
-    soup.find("span", "b-pagination-vuetify-imitation__item b-pagination-vuetify-imitation__item_current")
     return int(soup.find("span",
                          "b-pagination-vuetify-imitation__item b-pagination-vuetify-imitation__item_current").get_text().strip())
 
@@ -142,60 +106,6 @@ def init_doctor(doctor: Doctor, name: str, profession: str, experience: str, url
     doctor.set_experience(experience)
     doctor.set_url(url)
     return doctor
-
-
-def write_to_excel_file(clinics_set: OrderedSet):
-    # Create a new Excel workbook
-    workbook = openpyxl.Workbook()
-
-    # Select the active worksheet
-    sheet = workbook.active
-
-    # Write data to the Excel file
-    sheet['A1'] = 'Город'
-    sheet['B1'] = 'Клиника'
-    sheet['C1'] = 'Врач'
-    sheet['D1'] = 'Специализация'
-    sheet['E1'] = 'Стаж'
-    sheet['F1'] = 'Ссылка на клинику'
-    sheet['G1'] = 'Ссылка на врача'
-
-    # Set bold font for cells A1 to G1
-    bold_font = Font(bold=True)
-    for col in range(1, 8):  # Columns A to G
-        sheet.cell(row=1, column=col).font = bold_font
-
-    # Set column widths
-    column_widths = [20, 30, 20, 30, 15, 40, 40]  # Adjust as needed
-    for i, width in enumerate(column_widths, start=1):
-        sheet.column_dimensions[openpyxl.utils.get_column_letter(i)].width = width
-
-    row = 2
-    while row < len(clinics_set):
-
-        for clinic in clinics_set:
-            for doc in clinic.get_doctors:
-                sheet['A' + str(row)] = clinic.get_city  # Город
-                sheet['B' + str(row)] = clinic.get_name.strip()  # Клиника
-                sheet['C' + str(row)] = doc.get_name()  # Врач
-                sheet['D' + str(row)] = doc.get_profession()  # Специализация
-                sheet['E' + str(row)] = doc.get_experience()  # Стаж
-                sheet['F' + str(row)] = str(clinic.get_url).strip()  # Ссылка на клинику
-                sheet['G' + str(row)] = str(doc.get_url()).strip()  # Ссылка на врача
-
-                row += 1
-        # for doc in clinics_set.__getitem__(row).get_doctors:
-        #     # clinics_set.__getitem__(time_sleep)).get_doctors
-        #     sheet['A' + str(row)] = "-"  # Город
-        #     sheet['B' + str(row)] = clinics_set.__getitem__(j).get_name.strip()  # Клиника
-        #     sheet['C' + str(row)] = doc.get_name()  # Врач
-        #     sheet['D' + str(row)] = doc.get_profession()  # Специализация
-        #     sheet['E' + str(row)] = doc.get_experience()  # Стаж
-        #     # sheet['F' + str(rowNo)] = clinics_set.__getitem__(rowNo).get_url.strip()  # Ссылка на клинику
-        #     # sheet['G' + str(rowNo)] = doc.get_url  # Ссылка на врача
-
-    # Save the workbook
-    workbook.save('/Users/a-shdv/Desktop/example.xlsx')
 
 
 if __name__ == '__main__':
